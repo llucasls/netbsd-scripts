@@ -1,0 +1,70 @@
+#!/bin/sh
+
+MAX_VOLUME=255
+
+urgency() {
+	local volume_levels="$(get_volume)"
+	local max="$(get_max_volume ${volume_levels})"
+	if test "${max}" -eq 0; then
+		printf 'low'
+	elif test "${max}" - gt "${MAX_VOLUME}"; then
+		printf 'critical'
+	else
+		printf 'normal'
+	fi
+}
+
+get_max_volume() {
+	local volume_levels="$@"
+	local max=0
+	for vol in ${volume_levels}; do
+		if test "${vol}" -gt "${max}"; then
+			max="${vol}"
+		fi
+	done
+	printf '%d' ${max}
+}
+
+get_volume() {
+	mixerctl -v outputs.master | awk -F ',|=' '{ printf "%d %d", $2, $3 }'
+}
+
+set_volume() {
+	if test -n "$2"; then
+		local left="$1"
+		local right="$2"
+		mixerctl -w outputs.master="${left} ${right}"
+	elif test -n "$1"; then
+		local vol="$1"
+		mixerctl -w outputs.master="${vol}"
+	fi
+}
+
+increase_volume() {
+	local vol="$1"
+	mixerctl -w outputs.master+="${vol}"
+}
+
+decrease_volume() {
+	local vol="$1"
+	mixerctl -w outputs.master-="${vol}"
+}
+
+main() {
+	if test "$1" = increase; then
+		volume="$2"
+		increase_volume "${volume}"
+		notify-send volume "$(get_volume)" -r 1 -t 2100 -u "$(urgency)"
+	elif test "$1" = decrease; then
+		volume="$2"
+		decrease_volume "${volume}"
+		notify-send volume "$(get_volume)" -r 1 -t 2100 -u "$(urgency)"
+	elif test "$1" = set; then
+		set_volume "$2" "$3"
+		notify-send volume "$(get_volume)" -r 1 -t 2100 -u "$(urgency)"
+	elif test -z "$1"; then
+		get_volume
+	fi
+}
+
+main $@
