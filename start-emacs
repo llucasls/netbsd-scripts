@@ -1,0 +1,46 @@
+#!/bin/sh
+
+kill_emacs() {
+    SERVER=${1:-"server"}
+    EXIT_STATUS=${2:-0}
+    emacsclient -a false -s "${SERVER}" -e "(kill-emacs ${EXIT_STATUS})"
+}
+
+start_emacs() {
+    SERVER=${1:-"server"}
+    emacs --daemon="${SERVER}"
+}
+
+restart_emacs() {
+    SERVER=${1:-"server"}
+    kill_emacs "${SERVER}" && start_emacs "${SERVER}"
+}
+
+main() {
+    getopts s: flag 2> /dev/null
+    case ${flag} in
+        s)
+            SERVER=${OPTARG}
+            shift 2;;
+        \?)
+            SERVER="server";;
+    esac
+
+    case "$(basename "$0")" in
+        kill-emacs)
+            kill_emacs "${SERVER}" "${1:-0}"
+            ;;
+        start-emacs)
+            start_emacs "${SERVER}"
+            ;;
+        restart-emacs)
+            restart_emacs "${SERVER}"
+            ;;
+        *)
+            echo "Usage: $0 {kill-emacs|start-emacs|restart-emacs} [-s servername] [exit_status]" >&2
+            exit 1
+            ;;
+    esac
+}
+
+main "$@"
